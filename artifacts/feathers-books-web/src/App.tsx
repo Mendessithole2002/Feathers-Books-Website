@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { BookOpen, Bookmark, Check, ChevronLeft, ChevronRight, Compass, Feather, FileText, Image as ImageIcon, Library, Lock, LogOut, Menu, Moon, Plus, Search, Send, Settings, Shield, Star, Sun, Trash2, Upload, X } from 'lucide-react';
+import { Bell, BookOpen, Bookmark, Check, ChevronLeft, ChevronRight, Compass, Feather, FileText, Image as ImageIcon, Library, Lock, LogOut, Menu, Moon, Plus, Search, Send, Settings, Shield, Star, Sun, Trash2, Upload, X } from 'lucide-react';
 import { Link, Route, Switch, useLocation, useParams, Router as WouterRouter } from 'wouter';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
@@ -115,9 +115,8 @@ function Sidebar() {
 function MobileNav() {
   const [location] = useLocation();
   return <nav className="mobile-nav" aria-label="Mobile navigation">
-    <Link href="/" className={location === '/' ? 'active' : ''} data-testid="mobile-discover"><Compass size={19} /><span>Discover</span></Link>
+    <Link href="/" className={location === '/' ? 'active' : ''} data-testid="mobile-discover"><Compass size={19} /><span>Home</span></Link>
     <Link href="/library" className={location === '/library' ? 'active' : ''} data-testid="mobile-library"><Library size={19} /><span>Library</span></Link>
-     <Link href="/admin" className={location.startsWith('/admin') ? 'active' : ''} data-testid="mobile-admin"><Shield size={19} /><span>Studio</span></Link>
   </nav>;
 }
 function Shell({ children }: { children: ReactNode }) {
@@ -141,19 +140,20 @@ function Discover() {
   const featured = publishedBooks.find((book) => book.featured) ?? publishedBooks[0];
   const visible = useMemo(() => publishedBooks.filter((book) => (category === 'All' || book.category === category) && (`${book.title} ${book.author} ${book.category}`).toLowerCase().includes(query.trim().toLowerCase())), [publishedBooks, category, query]);
   const releases = [...publishedBooks].sort((a, b) => b.releaseDate.localeCompare(a.releaseDate));
-  return <Shell><div className="content-frame">
-    <header className="mb-9 flex items-end justify-between gap-4">
-      <div><div className="eyebrow mb-3">A small press for the curious</div><h1 className="serif m-0 text-5xl leading-[.95] tracking-tight sm:text-6xl">Find your next<br /><em className="text-[hsl(var(--accent))]">beautiful</em> story.</h1></div>
-      <Link href="/library" className="button button-outline hidden sm:inline-flex" data-testid="link-library-header"><Bookmark size={16} />Your shelf</Link>
+  return <Shell><div className="content-frame discover-page">
+    <header className="home-header">
+      <Brand />
+      <div className="home-actions"><Link href="/admin/sign-in" className="admin-shortcut" data-testid="link-admin-shortcut"><Lock size={14} />Admin</Link><button className="icon-button home-bell" aria-label="Notifications" data-testid="button-notifications"><Bell size={17} /></button></div>
     </header>
+    <div className="home-intro"><p>Good morning, reader.</p><h1>Find your next <em>beautiful</em><br />story.</h1></div>
     <div className="mb-4 grid gap-3 sm:grid-cols-[1fr_auto]">
       <label className="search-field" aria-label="Search books and authors"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search books, authors, or places..." data-testid="input-search-books" />{query && <button className="icon-button h-7 w-7 border-0" onClick={() => setQuery('')} aria-label="Clear search" data-testid="button-clear-search"><X size={15} /></button>}</label>
       <div className="pill-row">{categories.map((item) => <button key={item} className={`pill ${category === item ? 'selected' : ''}`} onClick={() => setCategory(item)} data-testid={`filter-${item.toLowerCase().replaceAll(' ', '-')}`}>{item}</button>)}</div>
     </div>
-    {!query && category === 'All' && featured && <section className="feature-card mt-7" aria-label="Editor's pick">
-      <div className="feature-copy"><div className="eyebrow mb-4 !text-[hsl(var(--accent))]">Editor's pick · August 2026</div><h2 className="serif m-0 text-5xl leading-[.92] sm:text-6xl">{featured.title}</h2><p className="mt-3 text-sm opacity-70">by {featured.author}</p><p className="mt-5 max-w-[440px] text-sm leading-6 opacity-75">{featured.description}</p><Link href={`/book/${featured.id}`} className="button mt-6 bg-[hsl(var(--accent))] text-[hsl(var(--primary))]" data-testid="link-featured-book">Discover book <ChevronRight size={16} /></Link></div><Cover book={featured} className="feature-cover" />
+     {!query && category === 'All' && featured && <section className="feature-card discover-feature mt-7" aria-label="Editor's pick">
+       <div className="feature-copy"><h2>{featured.title}</h2><p className="mt-3 text-sm opacity-70">by {featured.author}</p><p className="feature-description mt-5 max-w-[440px] text-sm leading-6 opacity-75">{featured.description}</p><Link href={`/book/${featured.id}`} className="feature-action button mt-6 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]" data-testid="link-featured-book">Discover book <ChevronRight size={16} /></Link></div><Cover book={featured} className="feature-cover" />
     </section>}
-    {!query && category === 'All' && <><div className="section-head"><h2>New releases</h2><span className="muted text-xs">Fresh from the press</span></div><div className="book-row">{releases.slice(0, 3).map((book) => <BookTile key={book.id} book={book} />)}</div></>}
+     {!query && category === 'All' && <><div className="section-head"><h2>New releases</h2><span className="muted text-xs">See all</span></div><div className="book-row">{releases.slice(0, 3).map((book) => <BookTile key={book.id} book={book} />)}</div></>}
     <div className="section-head"><h2>{query || category !== 'All' ? 'Search results' : 'Popular right now'}</h2><span className="muted text-xs">{visible.length} {visible.length === 1 ? 'title' : 'titles'}</span></div>
     {visible.length ? <div className="book-row-wide">{visible.map((book) => <Link href={`/book/${book.id}`} className="book-list-row" key={book.id} data-testid={`row-book-${book.id}`}><Cover book={book} className="list-cover" /><span className="list-copy"><strong className="book-title">{book.title}</strong><span className="book-author">{book.author} · {book.category}</span><span className="mt-2 block"><Rating book={book} /></span></span><span className="price">{book.price === 0 ? 'Free' : `$${book.price.toFixed(2)}`} <ChevronRight className="ml-2 inline" size={15} /></span></Link>)}</div> : <div className="empty-state"><Search className="mx-auto text-[hsl(var(--accent))]" /><h3 className="mt-4 text-lg font-bold">No stories found</h3><p className="muted mt-2 text-sm">Try another title, author, or category.</p></div>}
   </div></Shell>;
