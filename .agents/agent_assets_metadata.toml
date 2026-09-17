@@ -1,0 +1,17 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "QiQ8JWpab2_4494jl0HPz"
+uri = "file://.local/conversation-workspace/files/Feathers-Books/Feathers-Books-fixed.zip"
+type = "unspecified"
+title = "Feathers Books Android build fix"
+description = "Project archive with the Android Gradle properties normalized for local debug APK builds. Caches and dependency directories are excluded."
+logical_id = "bd6e95f9-f501-4531-9bbe-981637a43e75"
+content_hash = "sha256:d545e3c25cf48892db8dbc3a4a032bdd1adf1b239b36c2e4f66ada78ef157786"
+size = 45417415
+mtime_ms = 1789485325368
+storage_uri = "gcs://replit-rams-assets-picard/rams/assets/conversation:625cf9ce-cea2-4f9c-8351-f0b6f31e156e/bd6e95f9-f501-4531-9bbe-981637a43e75/a08a661a-b8df-4c7e-925f-0785382d37de"
+storage_version_token = "1789485339143031"
+content_type = "application/octet-stream"
+source_uri = "file://Feathers-Books/Feathers-Books-fixed.zip"

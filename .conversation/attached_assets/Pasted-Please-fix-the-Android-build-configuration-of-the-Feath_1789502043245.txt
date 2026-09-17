@@ -1,0 +1,71 @@
+Please fix the Android build configuration of the Feathers Books app.
+
+IMPORTANT:
+
+* Do NOT redesign the app.
+* Do NOT change the UI, colors, branding, fonts, logo, navigation, catalog, books, reader, publisher area, or existing functionality.
+* Do NOT replace the app with another implementation.
+* Make only the minimum dependency and Android build configuration changes necessary.
+* The goal is a successful LOCAL Android APK build using `gradlew.bat assembleDebug`.
+* Do NOT use EAS/cloud builds.
+
+Current project:
+
+* Expo SDK 57
+* React Native 0.86.3
+* react-native-worklets 0.10.1
+* React Native Reanimated 4.5.1
+* Android package: `com.feathers.books`
+* Gradle wrapper: 9.3.1
+
+The local Windows build currently fails with:
+
+`Configuring project ':react-native-worklets' without an existing directory is not allowed.`
+
+Gradle is trying to use this old/stale path:
+
+`node_modules\.pnpm\react-native-worklets@0.10._8bd6d28777ca01706445787a5672bd8d\node_modules\react-native-worklets\android`
+
+But pnpm now resolves the package to a shortened virtual-store path similar to:
+
+`node_modules\.pnpm\_8bd6d28777ca01706445787a5672bd8d\node_modules\react-native-worklets`
+
+The dependency itself exists and Node can resolve it correctly.
+
+There was also a previous Windows CMake path-length failure because the original pnpm dependency paths were too long. Therefore, please find a proper solution that BOTH:
+
+1. keeps dependency paths short enough for Windows CMake, AND
+2. ensures Gradle/Expo/RN autolinking uses the actual current dependency paths.
+
+Please inspect and fix:
+
+* pnpm configuration / virtual store configuration
+* Expo modules autolinking
+* React Native autolinking
+* `android/settings.gradle`
+* generated React Native/Expo Gradle configuration
+* any stale cached dependency paths
+* `node_modules/.pnpm`
+* `pnpm-lock.yaml` only if genuinely necessary
+* Android Gradle configuration
+
+Do not simply hard-code the old worklets path.
+
+After fixing it, verify that:
+
+* `node --print "require.resolve('react-native/package.json')"` works
+* `node --print "require.resolve('react-native-worklets/package.json')"` works
+* the Android project can configure successfully
+* `gradlew.bat clean` works
+* `gradlew.bat assembleDebug` can build successfully
+
+If the current pnpm virtual-store configuration is fundamentally incompatible with Expo/React Native Android autolinking, choose a safer project configuration that keeps the physical dependency paths short without breaking Gradle resolution.
+
+Please report:
+
+1. exactly which files you changed,
+2. exactly what you changed,
+3. why each change was necessary,
+4. whether `gradlew.bat assembleDebug` was successfully verified.
+
+Do not modify application functionality.

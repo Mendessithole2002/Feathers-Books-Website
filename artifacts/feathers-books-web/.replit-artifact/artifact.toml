@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Feathers Books Web"
+description = "A responsive browser version of Feathers Books for discovering books, managing a personal library, and reading comfortably on phones, tablets, and desktop screens."
+version = "1.0.0"
+id = "artifacts/feathers-books-web"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18631
+
+[services.development]
+run = "pnpm --filter @workspace/feathers-books-web run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/feathers-books-web", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/feathers-books-web/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18631"
+BASE_PATH = "/"

@@ -1,0 +1,1 @@
+export { readPdfFile, storePdfFile } from './pdfStorage.native';
