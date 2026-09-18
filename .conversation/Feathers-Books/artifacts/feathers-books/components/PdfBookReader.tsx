@@ -1,1 +1,0 @@
-export { PdfBookReader } from './PdfBookReader.native';

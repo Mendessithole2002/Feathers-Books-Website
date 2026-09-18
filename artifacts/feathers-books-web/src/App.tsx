@@ -25,6 +25,8 @@ type Book = {
   cover: string;
   coverUri?: string;
   pdfUri?: string;
+  audioUri?: string;
+  videoUri?: string;
 };
 
 type StoredState = { books: Book[]; ownedIds: string[]; bookmarks: Record<string, boolean>; progress: Record<string, number>; admin: boolean };
@@ -181,7 +183,8 @@ function BookDetail() {
   const addOrRead = () => { if (owned) navigate(`/reader/${book.id}`); else { toggleOwned(book.id); setToast('Added to your shelf'); } };
   return <Shell><div className="content-frame"><div className="mb-6 flex justify-between"><button className="button button-outline" onClick={() => navigate('/')} data-testid="button-back-discover"><ChevronLeft size={16} />Back to discover</button><button className="icon-button" aria-label={bookmarks[book.id] ? 'Remove bookmark' : 'Bookmark book'} onClick={() => { toggleBookmark(book.id); setToast(bookmarks[book.id] ? 'Bookmark removed' : 'Book bookmarked'); }} data-testid="button-bookmark"><Bookmark size={18} fill={bookmarks[book.id] ? 'hsl(var(--accent))' : 'none'} color={bookmarks[book.id] ? 'hsl(var(--accent))' : 'currentColor'} /></button></div>
     <article className="detail-hero"><Cover book={book} className="detail-cover" /><div className="detail-body"><div className="flex flex-wrap items-center gap-3"><span className="rounded-full bg-[hsl(var(--accent))] px-3 py-1 text-xs font-bold text-[hsl(var(--primary))]">{book.category}</span><Rating book={book} /></div><h1>{book.title}</h1><div className="detail-author">by {book.author}</div><div className="fact-strip"><span><FileText className="mr-1 inline" size={14} />{book.pages} pages</span><span><Compass className="mr-1 inline" size={14} />{new Date(book.releaseDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span><span><BookOpen className="mr-1 inline" size={14} />Digital edition</span></div><p className="detail-description">{book.description}</p><div className="detail-actions"><button className="button button-primary" onClick={addOrRead} data-testid="button-book-action"><BookOpen size={16} />{owned ? 'Read now' : book.price === 0 ? 'Add to shelf' : `Add to shelf · $${book.price.toFixed(2)}`}</button><Link href={`/reader/${book.id}?preview=1`} className="button button-outline" data-testid="link-free-preview">Read free preview</Link></div></div></article>
-    <div className="mx-auto mt-12 max-w-3xl"><h2 className="serif text-3xl">A note before you begin</h2><p className="muted mt-3 max-w-2xl leading-7">Feathers Books is a home for independent work with a point of view. Read at your own pace, return whenever you like, and keep the passages that matter close.</p></div>
+     {(book.audioUri || book.videoUri) && <section className="media-shelf" aria-label="Book media">{book.videoUri && <div className="book-media-card"><div className="media-card-heading"><span className="eyebrow">Video trailer</span><span className="muted text-xs">Watch before you read</span></div><video controls preload="metadata" src={book.videoUri} /></div>}{book.audioUri && <div className="book-media-card"><div className="media-card-heading"><span className="eyebrow">Audio feature</span><span className="muted text-xs">Listen to the story</span></div><audio controls preload="metadata" src={book.audioUri} /></div>}</section>}
+     <div className="mx-auto mt-12 max-w-3xl"><h2 className="serif text-3xl">A note before you begin</h2><p className="muted mt-3 max-w-2xl leading-7">Feathers Books is a home for independent work with a point of view. Read at your own pace, return whenever you like, and keep the passages that matter close.</p></div>
   </div>{toast && <Toast message={toast} onDone={() => setToast('')} />}</Shell>;
 }
 function NotFoundBook() {
@@ -212,13 +215,34 @@ function Reader() {
 function AdminSignIn() {
   const [, navigate] = useLocation();
   const { admin, saveState } = useLibrary();
-  const [email, setEmail] = useState('1feathersofficial@gmail.com');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   useEffect(() => { if (admin) navigate('/admin'); }, [admin, navigate]);
   if (admin) return null;
-  const submit = (event: React.FormEvent) => { event.preventDefault(); if (password !== 'feathers') { setError('That password does not match the publisher key.'); return; } saveState({ admin: true }); navigate('/admin/new'); };
-  return <div className="admin-page"><div className="content-frame"><div className="admin-topbar"><button className="back-link" onClick={() => navigate('/')} aria-label="Back to reader browsing" data-testid="button-admin-back"><ChevronLeft size={20} /></button><span>Publisher studio</span><span className="w-12" /></div><div className="admin-signin-wrap"><div className="eyebrow">Publisher studio</div><h1>Admin sign-in</h1><p>Reader browsing is public. Sign in with the owner email and password to manage the Feathers Books catalog.</p><form onSubmit={submit} className="admin-signin-form"><div className="field"><label htmlFor="publisher-email">Owner email</label><input id="publisher-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="username" data-testid="input-admin-email" /></div><div className="field"><label htmlFor="publisher-password">Publisher password</label><input id="publisher-password" type="password" value={password} onChange={(event) => { setPassword(event.target.value); setError(''); }} placeholder="Enter your admin password" autoComplete="current-password" data-testid="input-admin-password" /></div>{error && <p className="admin-error" role="alert" data-testid="status-admin-error">{error}</p>}<button className="button button-primary mt-7 w-full" disabled={!email || !password} data-testid="button-admin-submit">Open Publisher Studio</button></form></div></div></div>;
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setSubmitting(true);
+    setError('');
+    try {
+      const response = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+      if (!response.ok) {
+        setError(response.status === 503 ? 'Publisher sign-in is not configured yet.' : 'That password does not match the publisher key.');
+        return;
+      }
+      saveState({ admin: true });
+      navigate('/admin');
+    } catch {
+      setError('Unable to reach publisher sign-in. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  return <div className="admin-page"><div className="content-frame"><div className="admin-topbar"><button className="back-link" onClick={() => navigate('/')} aria-label="Back to reader browsing" data-testid="button-admin-back"><ChevronLeft size={20} /></button><span>Publisher studio</span><span className="w-12" /></div><div className="admin-signin-wrap"><div className="eyebrow">Publisher studio</div><h1>Admin sign-in</h1><p>Enter the publisher password to manage the Feathers Books catalog.</p><form onSubmit={submit} className="admin-signin-form"><input type="text" name="publisher-user" value="publisher" autoComplete="username" readOnly tabIndex={-1} aria-hidden="true" className="sr-only" /><div className="field"><label htmlFor="publisher-password">Publisher password</label><input id="publisher-password" type="password" value={password} onChange={(event) => { setPassword(event.target.value); setError(''); }} placeholder="Enter your admin password" autoComplete="current-password" data-testid="input-admin-password" /></div>{error && <p className="admin-error" role="alert" data-testid="status-admin-error">{error}</p>}<button className="button button-primary mt-7 w-full" disabled={!password || submitting} data-testid="button-admin-submit">{submitting ? 'Opening Publisher Studio…' : 'Open Publisher Studio'}</button></form></div></div></div>;
 }
 
 function AdminDashboard() {
@@ -248,13 +272,36 @@ function AdminNew() {
   const [price, setPrice] = useState('');
   const [coverUri, setCoverUri] = useState('');
   const [pdfUri, setPdfUri] = useState('');
+  const [audioUri, setAudioUri] = useState('');
+  const [videoUri, setVideoUri] = useState('');
   const [published, setPublished] = useState(true);
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
+  const [uploadingMedia, setUploadingMedia] = useState<'audio' | 'video' | ''>('');
   useEffect(() => { if (!admin) navigate('/admin/sign-in'); }, [admin, navigate]);
-  const save = (event: React.FormEvent) => { event.preventDefault(); if (!title.trim() || !author.trim() || !description.trim() || !content.trim() || !pages) { setError('Add a title, author, description, page count, and manuscript before publishing.'); return; } addBook({ title: title.trim(), author: author.trim(), category, description: description.trim(), content: content.trim(), pages: Number(pages), price: Number(price) || 0, cover: 'lighthouse', coverUri, pdfUri, published }); setToast('Book added to the catalog'); setTitle(''); setAuthor(''); setDescription(''); setContent(''); setPages(''); setPrice(''); setCoverUri(''); setPdfUri(''); };
+  const save = (event: React.FormEvent) => { event.preventDefault(); if (!title.trim() || !author.trim() || !description.trim() || !content.trim() || !pages) { setError('Add a title, author, description, page count, and manuscript before publishing.'); return; } if (uploadingMedia) { setError('Wait for the media upload to finish before publishing.'); return; } addBook({ title: title.trim(), author: author.trim(), category, description: description.trim(), content: content.trim(), pages: Number(pages), price: Number(price) || 0, cover: 'lighthouse', coverUri, pdfUri, audioUri, videoUri, published }); setToast('Book added to the catalog'); setTitle(''); setAuthor(''); setDescription(''); setContent(''); setPages(''); setPrice(''); setCoverUri(''); setPdfUri(''); setAudioUri(''); setVideoUri(''); };
   const chooseCover = (event: React.ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = () => setCoverUri(String(reader.result)); reader.readAsDataURL(file); };
   const choosePdf = (event: React.ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = () => setPdfUri(String(reader.result)); reader.readAsDataURL(file); };
+  const uploadMedia = async (file: File, kind: 'audio' | 'video') => {
+    setUploadingMedia(kind);
+    setError('');
+    try {
+      const response = await fetch('/api/storage/uploads/request-url', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }) });
+      if (!response.ok) { setError(response.status === 401 ? 'Your publisher session expired. Sign in again before uploading media.' : 'This media could not be prepared for upload.'); return; }
+      const { uploadURL, objectPath } = await response.json() as { uploadURL: string; objectPath: string };
+      const uploadResponse = await fetch(uploadURL, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file });
+      if (!uploadResponse.ok) { setError('The media upload failed. Please try again.'); return; }
+      const servingUrl = `/api/storage${objectPath}`;
+      if (kind === 'audio') setAudioUri(servingUrl);
+      else setVideoUri(servingUrl);
+    } catch {
+      setError('Unable to upload media right now. Please try again.');
+    } finally {
+      setUploadingMedia('');
+    }
+  };
+  const chooseAudio = (event: React.ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (file) void uploadMedia(file, 'audio'); };
+  const chooseVideo = (event: React.ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (file) void uploadMedia(file, 'video'); };
   if (!admin) return null;
   return <Shell><div className="admin-page"><div className="content-frame">
     <div className="admin-topbar"><Link href="/admin" className="back-link" aria-label="Back to catalog"><ChevronLeft size={20} /></Link><h1>New book</h1><button type="submit" form="new-book-form" data-testid="button-publish-header">Publish</button></div>
@@ -263,6 +310,7 @@ function AdminNew() {
       {error && <div className="admin-error" role="alert" data-testid="status-book-error">{error}</div>}
       <div className="field"><label htmlFor="book-cover">Cover artwork</label><label className="upload-panel">{coverUri ? <img src={coverUri} alt="Selected cover preview" className="h-16 w-12 rounded object-cover" /> : <span className="upload-icon"><ImageIcon size={18} /></span>}<strong>{coverUri ? 'Cover selected · choose another' : 'Choose cover image'}</strong><span>From your photo library</span><input id="book-cover" type="file" accept="image/*" className="sr-only" onChange={chooseCover} data-testid="input-book-cover" /></label></div>
       <div className="field"><label htmlFor="book-pdf">PDF edition</label><label className="flex min-h-16 cursor-pointer items-center gap-3 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] px-4 text-xs hover:border-[hsl(var(--accent))]"><span className="upload-icon !m-0 !h-10 !w-10"><FileText size={17} /></span><span className="flex-1">{pdfUri ? 'PDF selected · choose another' : 'Upload book PDF'}<small className="mt-1 block text-[10px] text-[hsl(var(--muted-foreground))]">Choose a PDF from your device</small></span><Upload size={17} className="text-[hsl(var(--accent))]" /><input id="book-pdf" type="file" accept="application/pdf" className="sr-only" onChange={choosePdf} data-testid="input-book-pdf" /></label></div>
+      <div className="media-upload-grid"><div className="field"><label htmlFor="book-audio">Audio feature <span className="muted font-normal">(optional)</span></label><label className="media-upload"><span className="upload-icon !m-0 !h-10 !w-10"><BookOpen size={17} /></span><span>{audioUri ? 'Audio uploaded · choose another' : uploadingMedia === 'audio' ? 'Uploading audio…' : 'Upload audio'}<small className="mt-1 block text-[10px] text-[hsl(var(--muted-foreground))]">MP3, WAV, or M4A</small></span><input id="book-audio" type="file" accept="audio/*" className="sr-only" onChange={chooseAudio} disabled={Boolean(uploadingMedia)} data-testid="input-book-audio" /></label></div><div className="field"><label htmlFor="book-video">Video trailer <span className="muted font-normal">(optional)</span></label><label className="media-upload"><span className="upload-icon !m-0 !h-10 !w-10"><Upload size={17} /></span><span>{videoUri ? 'Video uploaded · choose another' : uploadingMedia === 'video' ? 'Uploading video…' : 'Upload trailer'}<small className="mt-1 block text-[10px] text-[hsl(var(--muted-foreground))]">MP4, WebM, or MOV</small></span><input id="book-video" type="file" accept="video/*" className="sr-only" onChange={chooseVideo} disabled={Boolean(uploadingMedia)} data-testid="input-book-video" /></label></div></div>
       <div className="field"><label htmlFor="book-title">Title</label><input id="book-title" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="e.g. The Glass Orchard" data-testid="input-book-title" /></div>
       <div className="field"><label htmlFor="book-author">Author</label><input id="book-author" value={author} onChange={(event) => setAuthor(event.target.value)} placeholder="Author name" data-testid="input-book-author" /></div>
       <div className="field"><label>Category</label><div className="form-category-row">{categories.slice(1).map((item) => <button key={item} type="button" className={`form-category ${category === item ? 'selected' : ''}`} onClick={() => setCategory(item)} data-testid={`category-${item.toLowerCase().replaceAll(' ', '-')}`}>{item}</button>)}</div></div>
