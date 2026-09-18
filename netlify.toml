@@ -1,0 +1,8 @@
+[build]
+command = "pnpm --filter @workspace/feathers-books-web... run build"
+publish = "artifacts/feathers-books-web/dist/public"
+
+[[redirects]]
+from = "/*"
+to = "/index.html"
+status = 200
