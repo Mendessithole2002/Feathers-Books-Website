@@ -2,6 +2,16 @@
 command = "pnpm --filter @workspace/feathers-books-web... run build"
 publish = "artifacts/feathers-books-web/dist/public"
 
+[functions]
+directory = "netlify/functions"
+
+# Must precede the SPA catch-all below so the login endpoint is not rewritten to index.html.
+[[redirects]]
+from = "/api/admin/login"
+to = "/.netlify/functions/admin-login"
+status = 200
+force = true
+
 [[redirects]]
 from = "/*"
 to = "/index.html"
